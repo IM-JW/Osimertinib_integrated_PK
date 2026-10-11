@@ -1,0 +1,105 @@
+$PROBLEM 
+;; 1. Based on: run250
+;; 2. Description: SIMULATION_TEST
+;; x1. Author: isuji
+
+
+$ABBR DERIV2=NO ; 
+;----------------------------------
+$INPUT ID TIME AMT ADDL II DV MDV CMT WT ALB AST SEX
+;----------------------------------
+$DATA 1000.csv IGNORE=@
+;----------------------------------
+$SUBROUTINES  ADVAN6 TOL=4
+;----------------------------------
+
+
+$MODEL
+  COMP=(DEPOT) ; GUT compartment
+  COMP=(PAR)    ; central compartment for parent
+  COMP=(MET)    ; central compartment for metabolite
+
+$PK
+TVKA = THETA(1)
+TVCL = THETA(2)*((WT/64.57451199)**THETA(11))*((ALB/38.75886081)**THETA(14))      
+TVCLM = THETA(3)*((WT/64.57451199)**THETA(12))*((ALB/38.75886081)**THETA(15))*(1+THETA(18)*SEX)*((AST/30.79208297)**THETA(19))   
+TVV  = THETA(4)*((WT/64.57451199)**THETA(13))*((ALB/38.75886081)**THETA(16))*((AST/30.79208297)**THETA(20))         
+TVVM  = THETA(5)*EXP(THETA(17)*SEX)*((AST/30.79208297)**THETA(21))   
+TVFM  = THETA(6)
+
+KA  = TVKA  * EXP(ETA(1))               
+CL  = TVCL * EXP(ETA(2))          
+CLM = TVCLM * EXP(ETA(3))
+V   = TVV * EXP(ETA(4))   
+VM  = TVVM * EXP(ETA(5))     
+FM  = TVFM             
+
+K23 = CL / V  ; CL of metabolite formation (CL*FM)
+K30 = CLM / VM 
+
+S2 = V 
+S3 = VM   
+
+$DES
+DADT(1) = -KA * A(1)
+DADT(2) = KA * A(1) - K23 * A(2)
+DADT(3) = K23 * FM * A(2) - K30 * A(3)
+
+$ERROR
+IPRED = F
+IF (CMT.EQ.2) THEN
+W = SQRT(THETA(7)**2 + (THETA(8) * IPRED)**2)
+ELSE 
+W = SQRT(THETA(9)**2 + (THETA(10) * IPRED)**2)
+ENDIF
+IRES = DV - IPRED
+IF (W.EQ.0) W = 1
+IWRES = IRES / W
+Y = IPRED + W * ERR(1)
+CWRES = IRES / SQRT(IPRED**2)
+
+
+
+
+
+$THETA
+(0.284) FIX ;1 KA
+(14.8) FIX ;2 CL
+(40.1) FIX ;3 CLM
+(1110) FIX ;4 V
+(432) FIX ;5 VM
+(0.151) FIX ;6 FMET
+(2.76E-07) FIX ;7 ADD
+(0.0912) FIX ;8 PRO
+(7.99E-08) FIX ;9 ADD
+(0.0907) FIX ;10 PRO]
+(0.105) FIX ;11 CL_WT
+(0.36) FIX ;12 CLM_WT
+(0.249) FIX ;13 V_WT
+(0.458) FIX ;14 CL_ALB
+(0.879) FIX ;15 CLM_ALB
+(0.199) FIX ;16 V_ALB
+
+(-0.457) FIX ;17 VM_SEX EX
+(-0.217) FIX ;18 CLM_SEX PRO
+
+(0.172) FIX ;19 CLM_AST
+(0.0183) FIX ;20 V_AST
+(0.279) FIX   ;21 VM_AST
+
+
+$OMEGA
+ 0 FIX  ; IIV-KA
+ 0.0124 FIX  ; IIV-CL
+ 0.346 FIX  ; IIV-CLM
+ 0.0208 FIX  ; IIV-V
+ 0.763 FIX  ; IIV-VM
+
+$SIGMA
+ 1 FIX 
+ 1 FIX 
+
+$SIM (12345) (54321) ONLYSIMULATION
+$TABLE  ID TIME AMT ADDL II DV MDV CMT WT ALB AST SEX ONEHEADER NOPRINT FILE =SIM1000.csv
+
+
